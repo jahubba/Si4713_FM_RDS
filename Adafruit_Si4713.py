@@ -334,7 +334,7 @@ class Adafruit_Si4713(Adafruit_I2C):
 
 		self.setProperty(self.SI4713_PROP_TX_RDS_MESSAGE_COUNT, 1)
 		self.setProperty(self.SI4713_PROP_TX_RDS_PS_AF, 0xE0E0) # no AF
-		self.setProperty(self.SI4713_PROP_TX_RDS_FIFO_SIZE, 0)
+		self.setProperty(self.SI4713_PROP_TX_RDS_FIFO_SIZE, 5)
 
 		self.setProperty(self.SI4713_PROP_TX_COMPONENT_ENABLE, 0x0007)
 
@@ -360,7 +360,7 @@ class Adafruit_Si4713(Adafruit_I2C):
 
 	def setRDSbuffer(self, s):
 		self._rdsBuffer = s
-		bufferArray = [' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ']
+		bufferArray = [' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ', ' ',' ',' ',' ']
 
 		# calc number of slots needed
 		slots = (len(s)+3) / 4
@@ -382,8 +382,18 @@ class Adafruit_Si4713(Adafruit_I2C):
 				self.restart()
 				return
 
+	def setRT1(self):
+		res = self.sendCommand(self.SI4710_CMD_TX_RDS_BUFF, [0x84, 0x34, 0x16, 0x00, 0x00, 0x4B, 0xD7])
+
+	def setRT2(self, toggle, titleStart, titleLength, artistStart, artistLength):
+		first = 0x18 if toggle else 24
+		second = 8192 | (titleStart << 7) | (max(0, titleLength) << 1)
+		third = 8192 | (artistStart << 5) | max(0, artistLength)
+		res = self.sendCommand(self.SI4710_CMD_TX_RDS_BUFF, [0x84, 0xB0, first, divmod(second, 0x100)[0], divmod(second, 0x100)[1], divmod(third, 0x100)[0], divmod(third, 0x100)[1]])
+
 	def setGPIOctrl(self, x):
 		self.sendCommand(self.SI4710_CMD_GPO_CTL, [x])
 
 	def setGPIO(self, x):
 		self.sendCommand(self.SI4710_CMD_GPO_SET, [x])
+

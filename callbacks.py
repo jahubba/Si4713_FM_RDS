@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import logging
 import json
@@ -106,8 +106,8 @@ with open(fifo_path, 'w') as fifo:
 
 		logging.info('Playlist action %s', j['Action'])
 
-		if playlist_action == 'start': # or playlist_action == 'playing':
+		if playlist_action == 'start' or playlist_action == 'playing':
 			fifo.write('START\n')
-		elif playlist_action == 'stop':
+		else:
 			fifo.write('STOP\n')
 	logging.debug('Processing done')

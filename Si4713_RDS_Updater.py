@@ -148,17 +148,20 @@ def updateRDSData():
 	if config['RDSTextTrackNum'] == 'True' and tracknum != '0' and tracknum !='':
 		tmp_RDSTextTrackNum = '{} {} {}'.format(config['RDSTextTrackNumPre'], tracknum, config['RDSTextTrackNumSuf']).strip()
 
+	if tmp_RDSTextTitle == '' and tmp_RDSTextArtist == '':
+		titleArtistStr = config['RDSTextText']
+	else:
+		titleArtistStr = "'{}'".format(tmp_RDSTextTitle)
+		if (tmp_RDSTextArtist != ''):
+			titleArtistStr += " by {}".format(tmp_RDSTextArtist)
+
 	Stationstr = '{s: <{sw}}{t: <{tw}}{a: <{aw}}{n: <{nw}}'.format( \
 		s=config['StationText'], sw=nearest(config['StationText'], 8), \
 		t=tmp_StationTitle, tw=nearest(tmp_StationTitle, 8), \
 		a=tmp_StationArtist, aw=nearest(tmp_StationArtist, 8), \
 		n=tmp_StationTrackNum, nw=nearest(tmp_StationTrackNum, 8))
 
-	RDSTextstr = '{s: <{sw}}{t: <{tw}}{a: <{aw}}{n: <{nw}}'.format( \
-		s=config['RDSTextText'], sw=nearest(config['RDSTextText'], 32), \
-		t=tmp_RDSTextTitle, tw=nearest(tmp_RDSTextTitle,32), \
-		a=tmp_RDSTextArtist, aw=nearest(tmp_RDSTextArtist,32), \
-		n=tmp_RDSTextTrackNum, nw=nearest(tmp_RDSTextTrackNum, 32))
+	RDSTextstr = '{s: <{sw}}'.format(s=titleArtistStr, sw=nearest(titleArtistStr, 64))
 
 	logging.info('Updated Station Text [%s]', Stationstr)
 	logging.info('Updated RDS Text [%s]', RDSTextstr)
@@ -174,11 +177,14 @@ def nearest(str, size):
 radio_ready = False
 
 RDSStation = RadioBuffer('', 8, 4)
-RDSText = RadioBuffer('', 32, 7)
+RDSText = RadioBuffer('', 64, 7)
+RT1 = RadioBuffer('', 8, 10)
+RT2 = RadioBuffer('', 8, 5)
 
 title = ''
 artist = ''
 tracknum = ''
+toggle = True
 length = 0
 
 radio = None
@@ -241,7 +247,7 @@ with open(fifo_path, 'r', 0) as fifo:
 
 			elif line == 'START':
 				logging.info('Processing start')
-				if config['Start'] == "PlaylistStart":
+				if config['Start'] == "Playlist":
 					Si4713_start()
 
 			elif line == 'STOP':
@@ -251,7 +257,7 @@ with open(fifo_path, 'r', 0) as fifo:
 				tracknum = ''
 				updateRDSData()
 
-				if config['Stop'] == "PlaylistStop":
+				if config['Stop'] == "Playlist":
 					radio.reset()
 					radio = None
 					radio_ready = False
@@ -259,6 +265,7 @@ with open(fifo_path, 'r', 0) as fifo:
 
 			elif line[0] == 'T':
 				logging.debug('Processing title')
+  				toggle ^= True
 				title = line[1:]
 
 			elif line[0] == 'A':
@@ -289,6 +296,10 @@ with open(fifo_path, 'r', 0) as fifo:
 				if RDSText.nextTick():
 					logging.debug('Buffer Fragment  [%s]', RDSText.currentFragment())
 					radio.setRDSbuffer(RDSText.currentFragment())
+				if RT1.nextTick():
+					radio.setRT1()
+				if RT2.nextTick():
+					radio.setRT2(toggle, 1, len(title) - 1, 6 + len(title), len(artist) - 1)
 
 			length = length - 1
 			if length == 0:
@@ -299,3 +310,4 @@ with open(fifo_path, 'r', 0) as fifo:
 
 			# Sleep until the top of the next second
 			sleep ((1000000 - datetime.now().microsecond) / 1000000.0)
+
